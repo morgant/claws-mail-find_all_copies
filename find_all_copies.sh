@@ -1,0 +1,52 @@
+#!/bin/sh
+
+#
+# find_all_copies.sh - Find all duplicate copies of a messages within a single IMAP account in Claws Mail
+#
+# Current Requirements:
+#
+# - An IMAP account
+# - The IMAP account's folders must be synchronized for offline use in Claws Mail
+#
+# Reference:
+#
+# - <https://www.claws-mail.org/faq/index.php/Actions>
+# - <https://www.claws-mail.org/faq/index.php/Using_Claws_Mail_with_other_programs>
+
+DEBUG=false
+
+# we only accept a single parameter: the selected message's full path
+$DEBUG && printf "DEBUG: \$1 = '%s'\n" "$1"
+[ $# -ne 1 ] && echo "ERROR! Incorrect number of arguments." && exit 2
+
+# parse the Message-ID header from the selected message file
+message_id_header="$(egrep -i "^Message-ID:" "$1" | head -n 1)"
+$DEBUG && printf "DEBUG: message_id_header = '%s'\n" "$message_id_header"
+[ -z "$message_id_header" ] && echo "ERROR! Couldn't find 'Message-ID' header." && exit 1
+
+# find the parent IMAP account path to be searched
+#
+# path format should be: ~/.claws_mail/imapcache/<imap_server><email_address>/
+message_relative_path="${1#*.claws-mail/imapcache/*/*/}"
+$DEBUG && printf "DEBUG: message_relative_path = '%s'\n" "$message_relative_path"
+[ -z "$message_relative_path" ] && echo "ERROR! Couldn't parse relative path from message full path." && exit 1
+imap_account_path="${1%%"${message_relative_path}"}"
+$DEBUG && printf "DEBUG: imap_account_path = '%s'\n" "$imap_account_path"
+[ -z "$imap_account_path" ] && echo "ERROR! Couldn't parse IMAP account path from message full path." && exit 1
+
+# search parent IMAP account for all messages with the Message-ID
+$DEBUG && printf "\nSearching '${imap_account_path}' for messages with header '${message_id_header}'...\n\n"
+grep -irl "$message_id_header" "$imap_account_path" | while read -r message_match_path ; do
+  # parse the IMAP account name from the matched message full path
+  imap_account="${message_match_path#*.claws-mail/imapcache/*/}"
+  imap_account="${imap_account%%/*}"
+  [ -z "$imap_account" ] && echo "ERROR! Couldn't parse IMAP account from matching message full path." && exit 1
+
+  # parse the IMAP folder relative path from the matched message full path
+  imap_folder="${message_match_path#*.claws-mail/imapcache/*/*/}"
+  imap_folder="$(dirname "${imap_folder}")"
+  [ -z "$imap_folder" ] && echo "ERROR! Couldn't parse IMAP folder from matching message full path." && exit 1
+
+  # output the matching IMAP folder relative path in Claws Mail mailbox path format ("#<mailbox_type>/<mailbox_name>/<folder_path>")
+  printf "%s\n" "#imap/${imap_account}/${imap_folder}"
+done
