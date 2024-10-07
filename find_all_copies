@@ -20,9 +20,12 @@ $DEBUG && printf "DEBUG: \$1 = '%s'\n" "$1"
 [ $# -ne 1 ] && echo "ERROR! Incorrect number of arguments." && exit 2
 
 # parse the Message-ID header from the selected message file
-message_id_header="$(egrep -i "^Message-ID:" "$1" | head -n 1)"
+message_id_header="$(grep -Ei "^Message-ID:" "$1" | head -n 1)"
 $DEBUG && printf "DEBUG: message_id_header = '%s'\n" "$message_id_header"
 [ -z "$message_id_header" ] && echo "ERROR! Couldn't find 'Message-ID' header." && exit 1
+message_id_header_regex="$(echo "${message_id_header}" | sed -E "s/\./\\\./g")"
+$DEBUG && printf "DEBUG: message_id_header_regex = '%s'\n" "$message_id_header_regex"
+[ -z "$message_id_header_regex" ] && echo "ERROR! Couldn't escape 'Message-ID' header for regex." && exit 1
 
 # find the parent IMAP account path to be searched
 #
@@ -35,8 +38,9 @@ $DEBUG && printf "DEBUG: imap_account_path = '%s'\n" "$imap_account_path"
 [ -z "$imap_account_path" ] && echo "ERROR! Couldn't parse IMAP account path from message full path." && exit 1
 
 # search parent IMAP account for all messages with the Message-ID
-$DEBUG && printf "\nSearching '${imap_account_path}' for messages with header '${message_id_header}'...\n\n"
-grep -irl "$message_id_header" "$imap_account_path" | while read -r message_match_path ; do
+$DEBUG && printf "\nSearching '%s' for messages with header '%s'...\n\n" "${imap_account_path}" "${message_id_header}"
+#grep -iRl "$message_id_header" "$imap_account_path" | while read -r message_match_path ; do
+grep -EiRs -m 1 "^Message-ID: (.+)$" "$imap_account_path" | grep -Ei "^(.+):${message_id_header_regex}$" | while read -r message_match_path ; do
   # parse the IMAP account name from the matched message full path
   imap_account="${message_match_path#*.claws-mail/imapcache/*/}"
   imap_account="${imap_account%%/*}"
