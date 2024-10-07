@@ -40,7 +40,7 @@ $DEBUG && printf "DEBUG: imap_account_path = '%s'\n" "$imap_account_path"
 # search parent IMAP account for all messages with the Message-ID
 $DEBUG && printf "\nSearching '%s' for messages with header '%s'...\n\n" "${imap_account_path}" "${message_id_header}"
 #grep -iRl "$message_id_header" "$imap_account_path" | while read -r message_match_path ; do
-grep -EiRs -m 1 "^Message-ID: (.+)$" "$imap_account_path" | grep -Ei "^(.+):${message_id_header_regex}$" | while read -r message_match_path ; do
+find "$imap_account_path" -type f ! -name ".*" -print0 | xargs -0 grep -EiRs -m 1 "^Message-ID: (.+)$" | grep -Ei "^(.+):${message_id_header_regex}$" | while read -r message_match_path ; do
   # parse the IMAP account name from the matched message full path
   imap_account="${message_match_path#*.claws-mail/imapcache/*/}"
   imap_account="${imap_account%%/*}"
