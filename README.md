@@ -19,7 +19,7 @@ The "Find All Copies" script is an 'Action' script for [Claws Mail](https://claw
 * It only supports IMAP accounts (though could be modified to support POP & local MH accounts)
 * It cannot find messages that have not yet been downloaded from the IMAP server and stored locally
 * It cannot search across multiple accounts
-* It's slow as it has to process _all_ messages in the IMAP account
+* It's slow as it has to process _all_ messages in the IMAP account (this is despite optimizations to ensure that only the message headers are parsed)
 
 ## USAGE
 
